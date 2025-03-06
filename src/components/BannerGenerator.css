@@ -1,0 +1,149 @@
+.banner-generator {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.banner-generator form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.banner-generator input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.banner-generator button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.banner-generator button:disabled {
+  cursor: not-allowed;
+}
+
+.error {
+  color: red;
+  margin: 10px 0;
+}
+
+.generations-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.generation-item {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: transform 0.2s;
+}
+
+.generation-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.generation-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-bottom: 1px solid #eee;
+}
+
+.generation-item-content {
+  padding: 12px;
+}
+
+.generation-item-prompt {
+  font-size: 0.9rem;
+  color: #333;
+  margin: 0 0 8px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.generation-item-details {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 4px 0;
+}
+
+.generation-item button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.latest-generation {
+  width: 50%;
+  margin: 20px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.latest-generation img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.latest-generation-content {
+  padding: 20px;
+}
+
+.latest-generation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.latest-generation-title {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+.latest-generation-details {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 8px 0;
+}
+
+.latest-generation-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.divider {
+  margin: 40px 0;
+  border-top: 1px solid #eee;
+}
+
+.loading-skeleton {
+  animation: skeleton-loading 1s linear infinite alternate;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-color: #f0f0f0;
+  }
+  100% {
+    background-color: #e0e0e0;
+  }
+} 

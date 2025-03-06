@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { generateImage } from '../api/ideogram';
+import { saveGeneration, getGenerations, deleteGeneration } from '../services/storageService';
 import { 
   Box, 
   TextField, 
@@ -7,10 +9,12 @@ import {
   InputLabel, 
   Select, 
   MenuItem,
-  Grid
+  Grid,
+  Typography,
+  Skeleton
 } from '@mui/material';
-import ImageUploader from './ImageUploader';
-import GeneratedImages from './GeneratedImages';
+import './BannerGenerator.css';
+import ImageEditor from './ImageEditor';
 
 const ASPECT_RATIOS = {
   'ASPECT_1_1': '1:1',
@@ -18,48 +22,201 @@ const ASPECT_RATIOS = {
   'ASPECT_10_16': '10:16',
 };
 
-function BannerGenerator() {
+const handleDownload = (imageUrl) => {
+  const link = document.createElement('a');
+  link.href = imageUrl;
+  link.style.display = 'none';
+  link.target = '_blank';
+  link.download = 'generated_image.png';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const BannerGenerator = () => {
+  const [prompt, setPrompt] = useState('');
+  const [error, setError] = useState(null);
+  const [generations, setGenerations] = useState([]);
   const [formData, setFormData] = useState({
-    prompt: '',
     negativePrompt: '',
     aspectRatio: 'ASPECT_1_1',
     numImages: 1,
     colorPalette: '',
   });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImages, setGeneratedImages] = useState([]);
-  const [uploadedAssets, setUploadedAssets] = useState([]);
+  const [editingImage, setEditingImage] = useState(null);
+
+  useEffect(() => {
+    setGenerations(getGenerations());
+  }, []);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('YOUR_API_ENDPOINT', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_request: {
-            prompt: formData.prompt,
-            aspect_ratio: formData.aspectRatio,
-            model: 'V_2',
-            num_images: formData.numImages,
-            magic_prompt_option: 'AUTO'
-          }
-        })
+      const data = await generateImage({
+        prompt: prompt,
+        aspect_ratio: formData.aspectRatio
       });
       
-      const data = await response.json();
-      setGeneratedImages(prev => [...prev, ...data.data]);
+      
+      if (data.data && data.data.length > 0) {
+        const generation = {
+          imageUrl: data.data[0].url,
+          prompt: prompt,
+          aspectRatio: formData.aspectRatio,
+          createdAt: new Date().toISOString()
+        };
+        
+        const savedGeneration = saveGeneration(generation);
+        setGenerations(prev => [savedGeneration, ...prev]);
+      }
+      
     } catch (error) {
       console.error('Error generating images:', error);
+      setError('Error generating images. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const handleDelete = (id) => {
+    try {
+      deleteGeneration(id);
+      setGenerations(prev => prev.filter(gen => gen.id !== id));
+    } catch (err) {
+      console.error('Error deleting generation:', err);
+    }
+  };
+
+  const handleEditImage = async (editData) => {
+    setIsGenerating(true);
+    try {
+      const generation = {
+        imageUrl: editData.imageUrl,
+        prompt: `Edit: ${editData.prompt}`,
+        aspectRatio: editingImage.aspectRatio,
+        createdAt: new Date().toISOString()
+      };
+      
+      const savedGeneration = saveGeneration(generation);
+      setGenerations(prev => [savedGeneration, ...prev]);
+    } catch (error) {
+      console.error('Error editing image:', error);
+      setError('Error editing image. Please try again.');
+    } finally {
+      setIsGenerating(false);
+      setEditingImage(null);
+    }
+  };
+
+  const renderLatestGeneration = () => {
+    const latest = generations[0];
+    if (!latest) return null;
+
+    return (
+      <div className="latest-generation">
+        <img src={latest.imageUrl} alt={latest.prompt} />
+        <div className="latest-generation-content">
+          <div className="latest-generation-header">
+            <h3 className="latest-generation-title">Latest Generation</h3>
+            <span className="latest-generation-details">
+              {new Date(latest.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          <p className="latest-generation-details">
+            <strong>Prompt:</strong> {latest.prompt}
+          </p>
+          <p className="latest-generation-details">
+            <strong>Aspect Ratio:</strong> {ASPECT_RATIOS[latest.aspectRatio]}
+          </p>
+          <div className="latest-generation-actions">
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => handleDownload(latest.imageUrl)}
+            >
+              Download
+            </Button>
+            <Button 
+              variant="contained" 
+              color="error" 
+              onClick={() => handleDelete(latest.id)}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSkeleton = () => (
+    <div className="latest-generation">
+      <Skeleton variant="rectangular" width="100%" height={300} />
+      <div className="latest-generation-content">
+        <div className="latest-generation-header">
+          <Skeleton variant="text" width={200} height={30} />
+          <Skeleton variant="text" width={100} />
+        </div>
+        <Skeleton variant="text" width="80%" />
+        <Skeleton variant="text" width="60%" />
+        <div className="latest-generation-actions">
+          <Skeleton variant="rectangular" width={100} height={36} />
+          <Skeleton variant="rectangular" width={100} height={36} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderHistoryItem = (gen) => (
+    <div key={gen.id} className="generation-item">
+      <img src={gen.imageUrl} alt={gen.prompt} />
+      <div className="generation-item-content">
+        <p className="generation-item-prompt">{gen.prompt}</p>
+        <p className="generation-item-details">
+          Aspect Ratio: {ASPECT_RATIOS[gen.aspectRatio]}
+        </p>
+        <p className="generation-item-details">
+          {new Date(gen.createdAt).toLocaleDateString()}
+        </p>
+        <div className="latest-generation-actions">
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={() => handleDownload(gen.imageUrl)}
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            Download
+          </Button>
+          <Button 
+            variant="outlined" 
+            color="error" 
+            onClick={() => handleDelete(gen.id)}
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            Delete
+          </Button>
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={() => setEditingImage(gen)}
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+          >
+            Edit
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <Box>
+    <Box className="banner-generator">
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <TextField
@@ -67,8 +224,12 @@ function BannerGenerator() {
             multiline
             rows={4}
             label="Prompt"
-            value={formData.prompt}
-            onChange={(e) => setFormData({...formData, prompt: e.target.value})}
+            value={prompt}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setFormData({...formData, prompt: e.target.value});
+            }}
+            placeholder="Enter your prompt..."
           />
         </Grid>
         <Grid item xs={12} md={4}>
@@ -102,29 +263,42 @@ function BannerGenerator() {
         </Grid>
         
         <Grid item xs={12}>
-          <ImageUploader onUpload={setUploadedAssets} />
-        </Grid>
-        
-        <Grid item xs={12}>
           <Button 
             variant="contained" 
             onClick={handleGenerate}
-            disabled={isGenerating}
+            disabled={isGenerating || !prompt.trim()}
             fullWidth
           >
             {isGenerating ? 'Generating...' : 'Generate'}
           </Button>
         </Grid>
-        
+
+        {error && <div className="error">{error}</div>}
+
         <Grid item xs={12}>
-          <GeneratedImages 
-            images={generatedImages} 
-            isLoading={isGenerating} 
-          />
+          {isGenerating ? renderSkeleton() : renderLatestGeneration()}
+        </Grid>
+
+        <Grid item xs={12}>
+          <div className="divider" />
+          <Typography variant="h6" gutterBottom>
+            Generation History
+          </Typography>
+          <div className="generations-gallery">
+            {generations.map(renderHistoryItem)}
+          </div>
         </Grid>
       </Grid>
+
+      {editingImage && (
+        <ImageEditor
+          image={editingImage}
+          onEdit={handleEditImage}
+          onClose={() => setEditingImage(null)}
+        />
+      )}
     </Box>
   );
-}
+};
 
-export default BannerGenerator; 
+export default BannerGenerator;
