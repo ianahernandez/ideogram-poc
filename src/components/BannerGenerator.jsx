@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { generateImage } from '../api/ideogram';
+import { generateImage, remixImage } from '../api/ideogram';
 import { saveGeneration, getGenerations, deleteGeneration } from '../services/storageService';
 import { 
   Box, 
@@ -11,7 +11,8 @@ import {
   MenuItem,
   Grid,
   Typography,
-  Skeleton
+  Skeleton,
+  Slider
 } from '@mui/material';
 import './BannerGenerator.css';
 import ImageEditor from './ImageEditor';
@@ -20,6 +21,7 @@ const ASPECT_RATIOS = {
   'ASPECT_1_1': '1:1',
   'ASPECT_16_9': '16:9',
   'ASPECT_10_16': '10:16',
+  'ASPECT_4_3': '4:3'
 };
 
 const handleDownload = (imageUrl) => {
@@ -45,35 +47,60 @@ const BannerGenerator = () => {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingImage, setEditingImage] = useState(null);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [imageWeight, setImageWeight] = useState(50);
 
   useEffect(() => {
     setGenerations(getGenerations());
   }, []);
 
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const data = await generateImage({
-        prompt: prompt,
-        aspect_ratio: formData.aspectRatio
-      });
+      let data;
       
+      if (uploadedImage) {
+        data = await remixImage(
+          uploadedImage, 
+          prompt,
+          formData.aspectRatio,
+          imageWeight
+        );
+      } else {
+        data = await generateImage({
+          prompt: prompt,
+          aspect_ratio: formData.aspectRatio
+        });
+      }
       
-      if (data.data && data.data.length > 0) {
+      if (data && data.length > 0) {
         const generation = {
-          imageUrl: data.data[0].url,
+          imageUrl: data[0].url,
           prompt: prompt,
           aspectRatio: formData.aspectRatio,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          isRemix: !!uploadedImage
         };
         
         const savedGeneration = saveGeneration(generation);
         setGenerations(prev => [savedGeneration, ...prev]);
+        setUploadedImage(null);
       }
       
     } catch (error) {
-      console.error('Error generating images:', error);
-      setError('Error generating images. Please try again.');
+      console.error('Error generating/remixing images:', error);
+      setError('Error processing images. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -219,17 +246,58 @@ const BannerGenerator = () => {
     <Box className="banner-generator">
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
+          <Box sx={{ mb: 2 }}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              id="image-upload"
+            />
+            <label htmlFor="image-upload">
+              <Button
+                variant="outlined"
+                component="span"
+                fullWidth
+              >
+                Upload Image for Remix
+              </Button>
+            </label>
+          </Box>
+          {uploadedImage && (
+            <Box sx={{ mb: 2, position: 'relative' }}>
+              <img 
+                src={uploadedImage} 
+                alt="Uploaded" 
+                style={{ 
+                  width: '100%', 
+                  maxHeight: '200px', 
+                  objectFit: 'contain' 
+                }} 
+              />
+              <Button
+                onClick={() => setUploadedImage(null)}
+                color="error"
+                sx={{ position: 'absolute', top: 8, right: 8 }}
+              >
+                Remove
+              </Button>
+            </Box>
+          )}
           <TextField
             fullWidth
             multiline
             rows={4}
-            label="Prompt"
+            label={uploadedImage ? "Remix Prompt" : "Generation Prompt"}
             value={prompt}
             onChange={(e) => {
               setPrompt(e.target.value);
               setFormData({...formData, prompt: e.target.value});
             }}
-            placeholder="Enter your prompt..."
+            placeholder={uploadedImage ? 
+              "Describe how you want to remix this image..." : 
+              "Enter your prompt..."
+            }
           />
         </Grid>
         <Grid item xs={12} md={4}>
@@ -269,9 +337,31 @@ const BannerGenerator = () => {
             disabled={isGenerating || !prompt.trim()}
             fullWidth
           >
-            {isGenerating ? 'Generating...' : 'Generate'}
+            {isGenerating ? 'Processing...' : uploadedImage ? 'Remix Image' : 'Generate'}
           </Button>
         </Grid>
+
+        {uploadedImage && (
+          <Grid item xs={12}>
+            <Typography gutterBottom>
+              Image Similarity: {imageWeight}%
+            </Typography>
+            <Slider
+              value={imageWeight}
+              onChange={(e, newValue) => setImageWeight(newValue)}
+              aria-labelledby="image-weight-slider"
+              valueLabelDisplay="auto"
+              step={1}
+              marks
+              min={1}
+              max={100}
+              sx={{ mb: 2 }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Higher values keep more details from the original image, lower values allow more creative freedom.
+            </Typography>
+          </Grid>
+        )}
 
         {error && <div className="error">{error}</div>}
 

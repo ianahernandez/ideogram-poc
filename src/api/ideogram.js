@@ -21,7 +21,7 @@ const generateImage = async (prompt) => {
     const data = response.data; 
     
     if (data.data && data.data.length > 0) {
-      return data.data[0].url;
+      return data.data;
     } else {
       throw new Error('No image data received from Ideogram API');
     }
@@ -70,4 +70,48 @@ const editImage = async (editData) => {
   }
 };
 
-export { generateImage, editImage }; 
+const remixImage = async (imageUrl, prompt, aspectRatio = 'ASPECT_1_1', imageWeight = 50) => {
+  try {
+    const form = new FormData();
+    
+    // Convertir la URL de la imagen a Blob
+    const imageResponse = await fetch(imageUrl, {
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    const imageBlob = await imageResponse.blob();
+    
+    // Crear el objeto de configuración de la imagen
+    const imageRequest = {
+      prompt: prompt,
+      aspect_ratio: aspectRatio,
+      image_weight: imageWeight,
+      magic_prompt_option: 'OFF',
+      model: 'V_2'
+    };
+
+    // Añadir los parámetros al FormData
+    form.append('image_request', JSON.stringify(imageRequest));
+    form.append('image_file', imageBlob);
+
+    const response = await fetch('https://api.ideogram.ai/remix', {
+      method: 'POST',
+      headers: {
+        'Api-Key': process.env.REACT_APP_IDEOGRAM_API_KEY
+      },
+      body: form
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to remix image');
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (error) {
+    console.error('Error remixing image:', error);
+    throw error;
+  }
+};
+
+export { generateImage, editImage, remixImage }; 

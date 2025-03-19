@@ -13,6 +13,10 @@
   justify-content: center;
   gap: 10px;
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .canvas-container {
@@ -39,6 +43,7 @@
   left: 0;
   opacity: 0.5;
   pointer-events: all;
+  touch-action: none;
 }
 
 .editor-canvas.mask:hover {
@@ -57,6 +62,18 @@
   cursor: pointer;
 }
 
+.editor-canvas.mask.brush-mode {
+  cursor: crosshair;
+}
+
+.editor-canvas.mask.rectangle-mode {
+  cursor: crosshair;
+}
+
+.editor-canvas.mask.magic-mode {
+  cursor: crosshair;
+}
+
 .editor-controls {
   width: 100%;
   margin-top: 20px;
@@ -71,4 +88,104 @@
   background: #f5f5f5;
   border-radius: 8px;
   color: #666;
+}
+
+.overlay-preview {
+  position: absolute;
+  pointer-events: all;
+  border: 2px solid transparent;
+  z-index: 2;
+  transform-origin: center;
+  touch-action: none;
+  user-select: none;
+  transition: border-color 0.2s;
+}
+
+.overlay-preview img {
+  pointer-events: none;
+  user-select: none;
+}
+
+.overlay-preview.selected {
+  border-color: #1976d2;
+}
+
+.overlay-preview:hover {
+  border-color: #1976d2;
+}
+
+.overlay-controls {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.rotate-handle {
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 20px;
+  height: 20px;
+  background: #1976d2;
+  border-radius: 50%;
+  cursor: alias;
+  pointer-events: all;
+  display: none;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 20px;
+  height: 20px;
+  background: #1976d2;
+  border-radius: 50%;
+  cursor: se-resize;
+  pointer-events: all;
+  display: none;
+}
+
+.overlay-preview:hover .rotate-handle,
+.overlay-preview:hover .resize-handle,
+.overlay-preview.selected .rotate-handle,
+.overlay-preview.selected .resize-handle {
+  display: block;
+}
+
+.overlay-delete {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f44336;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: all;
+  z-index: 3;
+}
+
+.overlay-preview:hover .overlay-delete {
+  display: flex;
+}
+
+.editor-canvas.mask.overlay-mode {
+  cursor: default;
+}
+
+.magic-tolerance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 } 
